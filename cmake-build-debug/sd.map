@@ -1,0 +1,5 @@
+<map id="G" name="G">
+<area shape="poly" id="node3" href="http://www.google.com" title="30" alt="" coords="1443,507,1439,488,1431,472,1417,459,1400,450,1380,447,1361,450,1344,459,1330,472,1321,488,1318,507,1321,525,1330,542,1344,555,1361,563,1380,566,1400,563,1417,555,1431,542,1439,525"/>
+<area shape="poly" id="edge20" href="http://www.google.com" title="ссылка на Google" alt="" coords="298,76,824,76,824,81,298,81"/>
+<area shape="rect" id="edge20-label" href="http://www.google.com" title="ссылка на Google" alt="" coords="322,5,814,79"/>
+</map>

@@ -1,0 +1,15 @@
+digraph G {
+    rankdir = LR;
+    node[shape=ellipse, fontsize=50, color = red];
+    edge[fontsize=50, color = blue, fillcolor = blue];
+
+0001 [label = "A"];
+0002 [label = "A"];
+0003 [label = "B"];
+0004 [label = "B"];
+0005 [label = "C"];
+
+0001 -> 0002 [label = 23];
+
+
+}
