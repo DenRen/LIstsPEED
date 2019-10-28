@@ -3,6 +3,51 @@
 #include <Super_Stack_Library.h>
 #include <cstdlib>
 
+#define CHECK_LIST1A(arg, arg1)  \
+if (!lst::dmp_ON) {                                                                                 \
+        if (checking_list (list) != lst::ALL_RIGHT) {                                               \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return -1;                                                                              \
+        }                                                                                           \
+    } else {                                                                                        \
+        char string[30];                                                                            \
+        sprintf (string, arg, arg1);                                                                \
+        if (checking_list (list, string) != lst::ALL_RIGHT) {                                       \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return -1;                                                                              \
+        }                                                                                           \
+    }
+
+#define CHECK_LIST2A(arg, arg1, arg2)  \
+if (!lst::dmp_ON) {                                                                                 \
+        if (checking_list (list) != lst::ALL_RIGHT) {                                               \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return -1;                                                                              \
+        }                                                                                           \
+    } else {                                                                                        \
+        char string[30];                                                                            \
+        sprintf (string, arg, arg1, arg2);                                                          \
+        if (checking_list (list, string) != lst::ALL_RIGHT) {                                       \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return -1;                                                                              \
+        }                                                                                           \
+    }
+
+#define CHECK_LIST1A_V(arg, arg1)  \
+if (!lst::dmp_ON) {                                                                                 \
+        if (checking_list (list) != lst::ALL_RIGHT) {                                               \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return;                                                                                 \
+        }                                                                                           \
+    } else {                                                                                        \
+        char string[30];                                                                            \
+        sprintf (string, arg, arg1);                                                                \
+        if (checking_list (list, string) != lst::ALL_RIGHT) {                                       \
+            *state_func = lst::REALLOC_ERR;                                                         \
+            return;                                                                                 \
+        }                                                                                           \
+    }
+
 namespace lst {
     typedef __int32_t data_t;
     typedef __int16_t num_t;   // Тип номера списка (обязательно signed)
@@ -15,10 +60,13 @@ namespace lst {
         REALLOC_ERR,
         NO_ELEMENT
     };
-
+    bool dmp_ON = true;
     bool dmp_DOT_ON = true;
     bool dmp_DOT_SHOW_AT_ONCE = false;
     bool dmp_Creat_Animatoin = true;
+    bool dmp_stick = true;
+
+    void create_Animation_dot ();
 }
 
 struct list_t {
@@ -31,6 +79,8 @@ struct list_t {
     lst::num_t tail;    // Номер последнего элемента в списке (если 0, то список пуст, если head, то 1 элемент в списке)
     lst::num_t free;    // Первый номер свободной ячейки в списке
     lst::num_t count;   // Количество занятых ячеек
+
+    FILE *fileDump;     // При включенном dmp_ON сюда будет записваться Dump
 };
 
 int list_Construct (list_t *list);
@@ -51,20 +101,23 @@ lst::num_t find_elem (list_t *list, lst::num_t value);
 
 bool isfree (list_t *list, lst::num_t number, __uint8_t *state_func);
 
-void Dump_list (list_t *list, FILE *file = stdout);
+void Dump_list (list_t *list, FILE *file = stdout, char *string = nullptr);
 
-void Dump_list_dot (list_t *list);
+void Dump_list_dot (list_t *list, char *string);
 
-int checking_size_list (list_t *list);
+int checking_list (list_t *list, char *string = nullptr);
 
 inline __uint64_t min_size_data (double expn) {
     return (__uint64_t) (1 / expn) + 1;
 }
 
+int Verificator_List (list_t *list);
+
 int main () {
     struct list_t list = {};
     list.size = 8;
     list.expn = 1.2;
+    list.fileDump = stdout;
 
     if (list_Construct (&list) != lst::ALL_RIGHT) {
         list_Destruct (&list);
@@ -73,42 +126,24 @@ int main () {
 
     Dump_list (&list, stdout);
     __uint8_t state_func = 0;
-    for (int i = 10; i < 70; i += 10) {
+    for (int i = 10; i < 70; i += 10)
         add_end (&list, i, &state_func);
-        Dump_list (&list, stdout);
-    }
 
     del_elem (&list, 5, &state_func);
-    Dump_list (&list, stdout);
-
     add_right (&list, 5, 3, &state_func);
-    Dump_list (&list, stdout);
-
     add_right (&list, -57, 5, &state_func);
-    Dump_list (&list, stdout);
     add_right (&list, 7, 5, &state_func);
-    Dump_list (&list, stdout);
-
-
     add_end (&list, 50, &state_func);
-    Dump_list (&list, stdout);
-
     add_left (&list, 56, 4, &state_func);
-    Dump_list (&list, stdout);
-
     del_elem (&list, 1, &state_func);
-    Dump_list (&list, stdout);
 
     printf ("%d", find_elem (&list, 7));
 
-
-
     list_Destruct (&list);
-    if (lst::dmp_Creat_Animatoin) {
-        system ("rm dot_dir/video.mp4 2> /dev/null; rm dot_dir/out.gif 2> /dev/null");
-        system ("ffmpeg -r 1 -i dot_dir/%d.png dot_dir/video.mp4 2> /dev/null");
-        system ("ffmpeg -i dot_dir/video.mp4 dot_dir/out.gif 2> /dev/null");
-    }
+
+    if (lst::dmp_Creat_Animatoin)
+        lst::create_Animation_dot ();
+
     return 0;
 }
 
@@ -122,7 +157,7 @@ lst::num_t find_elem (list_t *list, lst::num_t value) {
 }
 
 bool isfree (list_t *list, lst::num_t number, __uint8_t *state_func) {
-    if (checking_size_list (list) != lst::ALL_RIGHT) {
+    if (checking_list (list) != lst::ALL_RIGHT) {
         *state_func = lst::REALLOC_ERR;
         return -1;
     }
@@ -134,10 +169,9 @@ bool isfree (list_t *list, lst::num_t number, __uint8_t *state_func) {
 }
 
 lst::num_t add_right (list_t *list, lst::data_t value, lst::num_t number, __uint8_t *state_func) {
-    if (checking_size_list (list) != lst::ALL_RIGHT) {
-        *state_func = lst::REALLOC_ERR;
-        return -1;
-    } else if (number == list->tail) {
+    CHECK_LIST2A ("ADD to RIGHT of %d value == %d", number, value)
+
+    if (number == list->tail) {
         lst::num_t new_num = add_end (list, value, state_func);
         return new_num;
     }
@@ -161,11 +195,7 @@ lst::num_t add_right (list_t *list, lst::data_t value, lst::num_t number, __uint
 lst::num_t add_end (list_t *list, lst::data_t value, __uint8_t *state_func) {
     // Спросить, что быстрее  list->data[list->free] = value или temp = list->free
     // list->data[temp] = value. Таких обращений к дате сотни. Если что, то переписать.
-
-    if (checking_size_list (list) != lst::ALL_RIGHT) {
-        *state_func = lst::REALLOC_ERR;
-        return -1;
-    }
+    CHECK_LIST1A ("ADD to END value == %d", value)
 
     lst::num_t temp_free = list->free;
     list->free = list->next[temp_free];
@@ -182,10 +212,9 @@ lst::num_t add_end (list_t *list, lst::data_t value, __uint8_t *state_func) {
 }
 
 lst::num_t add_left (list_t *list, lst::data_t value, lst::num_t number, __uint8_t *state_func) {
-    if (checking_size_list (list) != lst::ALL_RIGHT) {
-        *state_func = lst::REALLOC_ERR;
-        return -1;
-    } else if (number == list->head) {
+    CHECK_LIST2A ("ADD to LEFT of %d value == %d", number, value)
+
+    if (number == list->head) {
         lst::num_t new_num = add_begin (list, value, state_func);
         return new_num;
     }
@@ -209,10 +238,7 @@ lst::num_t add_begin (list_t *list, lst::data_t value, __uint8_t *state_func) {
     // Спросить, что быстрее  list->data[list->free] = value или temp = list->free
     // list->data[temp] = value. Таких обращений к дате сотни. Если что, то переписать.
 
-    if (checking_size_list (list) != lst::ALL_RIGHT) {
-        *state_func = lst::REALLOC_ERR;
-        return -1;
-    }
+    CHECK_LIST1A ("ADD TO BEGIN value == %d", value)
 
     lst::num_t temp_free = list->free;
     list->free = list->next[temp_free];
@@ -230,6 +256,7 @@ lst::num_t add_begin (list_t *list, lst::data_t value, __uint8_t *state_func) {
 }
 
 void del_elem (list_t *list, lst::num_t number, __uint8_t *state_func) {
+    CHECK_LIST1A_V ("DEL num == %d", number)
 
     if (number == list->tail)
         list->tail = list->prev[number];
@@ -306,7 +333,8 @@ void list_Destruct (list_t *list) {
     list->head = list->tail = 0;
 }
 
-int checking_size_list (list_t *list) {
+int checking_list (list_t *list, char *string) {
+    assert (Verificator_List (list));
     if (list->count == list->size) {
         lst::data_t *temp_data = nullptr;
         lst::num_t *temp_next = nullptr;
@@ -333,18 +361,21 @@ int checking_size_list (list_t *list) {
 
             list->size = new_size;
 
-            /*list->prev[0] = list->size - 1;
-            for (lst::num_t i = 0; i < list->size - 1; i++)
-                list->prev[i + 1] = i;*/
+            if (lst::dmp_ON)
+                Dump_list (list, list->fileDump, string);
+
             return lst::ALL_RIGHT;
-            list->size = new_size;
         }
         return lst::REALLOC_ERR;
     }
+    if (lst::dmp_ON)
+        Dump_list (list, list->fileDump, string);
+
     return lst::ALL_RIGHT;
 }
 
-void Dump_list (list_t *list, FILE *file) {
+// Единственная функция, которая не поместилась в экран
+void Dump_list (list_t *list, FILE *file, char *string) {
 /* IBM864
 133) ─
 134) │
@@ -358,6 +389,7 @@ void Dump_list (list_t *list, FILE *file) {
 142) └
 143) ┘
 */  // Сначала в файл
+
     __uint8_t length_number = 3;
     lst::num_t num = list->size;
     //fprintf (file, "%4c│", ' ');
@@ -404,62 +436,121 @@ void Dump_list (list_t *list, FILE *file) {
     fprintf (file, "────┘\n");
 
     fprintf (file, "\n");
+
     ////////////////////////////////////////////////    //DOT
 
     if (lst::dmp_DOT_ON)
-        Dump_list_dot (list);
+        Dump_list_dot (list, string);
 
 }
 
-void Dump_list_dot (list_t *list) {
-    static size_t number_calls = 0;
-    static bool first = false;
-
-    if (!first) {
+namespace Dldot {  // function only for Dump_list_dot
+    inline void recreate_dot_dir () {
         system ("rm -rf dot_dir/ 2> /dev/null");
         system ("mkdir dot_dir");
         system ("touch dot_dir/README.txt; echo This folder constatly deleted! > dot_dir/README.txt");
-        first = true;
     }
 
-    FILE *file_dot = fopen ("temp_file.dot", "w");
-    if (file_dot == nullptr) {
-        PRINT_ERROR ("DONT CREATE FILE_DOT")
+    inline bool fill_main_inf_in_file (list_t *list, char *string) {    // Заполняет dot основной информацией о list
+        FILE *file_dot = fopen ("temp_file.dot", "w");
+        if (file_dot == nullptr) {
+            PRINT_ERROR ("DONT CREATE FILE_DOT")
+            return false;
+        }
+
+        fprintf (file_dot, "digraph G {\n"
+                           "    rankdir = LR;\n"
+                           "    node[shape=ellipse, fontsize=50, color = red];\n"
+                           "    edge[fontsize=50, color = blue, fillcolor = blue];\n");
+        lst::num_t num = 0;
+        lst::num_t size = list->size;
+
+        for (num = 0; num < size; num++)                                        // Идентифицирую все элементы списка
+            fprintf (file_dot, "\t%d [label = \"%d\"];\n", num, list->data[num]);
+
+        fprintf (file_dot, "head -> %d[label = \"%d\"];\n",
+                 list->head, list->head);                                       // Рисую граф из используемых ячеек
+        for (num = list->next[list->head]; num != list->tail; num = list->next[num])
+            fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", list->prev[num], num, list->prev[num]);
+        fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", list->prev[num], num, list->prev[num]);
+        fprintf (file_dot, "\t%d -> tail[label = \"%d\"]\n", num, list->tail);
+
+        fprintf (file_dot, "free -> %d[label = \"%d\"];\n",
+                 list->free, list->free);                                       // Рисую граф из неиспользуемых ячеек
+        for (num = list->free; num < size - 1; num = list->next[num])
+            fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", num, list->next[num], list->next[num]);
+
+        // Немного костыльно инициализирую ещё один элемент, который хранит кол-во занятых ячеек под номером size
+        fprintf (file_dot, "\t%d [label = \"%d\"];\n", size, list->count);
+        fprintf (file_dot, "count -> %d;\n", size);
+
+        // Пишет команду, которая будет исполнена над этим списком
+        fprintf (file_dot, "    node[shape = rectangle, fontsize=40, color = black];\n");
+        fprintf (file_dot, "%d -> \"%s\"[shape = rectangle, style = invis];\n", size, string);
+        fprintf (file_dot, "}");
+
+        fclose (file_dot);
+        return true;
+    }
+
+    inline void bonding_pictures (size_t number_calls) {    // Склеивает предыдущую и нынешнюю фотку
+        char comand[1024] = "";
+        sprintf (comand, "cd dot_dir;");
+        // Получаем высоту и ширину предыдущей картинки
+        sprintf (comand, R"(%s height=$(identify -format "%%h" "%lu.png") > /dev/null;)",
+                 comand, number_calls - 1);
+        sprintf (comand, R"(%s wight=$(identify -format "%%w" "%lu.png") > /dev/null;)",
+                 comand, number_calls - 1);
+        sprintf (comand, "%s wight=$(($wight+$wight/11));height=$(($height+$height/11));", comand);
+        // Дорисовываем под предыдущеё картинкой чёрный прямоугольник такого же размера
+        sprintf (comand, "%s ffmpeg -y -i %lu.png -i %lu.png"
+                         " -filter_complex scale=$wight:$height,tile=1x2 %lu.png 2> /dev/null;",
+                 comand, number_calls - 1, number_calls, number_calls - 1);
+        // Вставляем в этот прямоугольник новую картинку
+        sprintf (comand, "%sffmpeg -y -i %lu.png -i %lu.png -filter_complex overlay=0:$height %lu.png 2> /dev/null;",
+                 comand, number_calls - 1, number_calls, number_calls - 1);
+        sprintf (comand, "%s cd ..;", comand);
+        printf ("\n%s\n", comand);
+        system (comand);
+    }
+}
+
+void Dump_list_dot (list_t *list, char *string) {
+    static size_t number_calls = 0;
+    static bool first = false;
+
+    // Удаляю папку со старыми данными и создаю пустую новую для хранения результата (фото, видео, GIF)
+    if (!first) {
+        Dldot::recreate_dot_dir ();
+        first = true;
         return;
     }
 
-    fprintf (file_dot, "digraph G {\n"
-                       "    rankdir = LR;\n"
-                       "    node[shape=ellipse, fontsize=50, color = red];\n"
-                       "    edge[fontsize=50, color = blue, fillcolor = blue];\n");
-    lst::num_t num = 0;
-    lst::num_t size = list->size;
+    if (!Dldot::fill_main_inf_in_file (list, string))
+        return;
 
-    for (num = 0; num < size; num++)
-        fprintf (file_dot, "\t%d [label = \"%d\"];\n", num, list->data[num]);
-
-    fprintf (file_dot, "head -> %d[label = \"%d\"];\n", list->head, list->head);
-    for (num = list->next[list->head]; num != list->tail; num = list->next[num])
-        fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", list->prev[num], num, list->prev[num]);
-    fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", list->prev[num], num, list->prev[num]);
-    fprintf (file_dot, "\t%d -> tail[label = \"%d\"]\n", num, list->tail);
-
-    fprintf (file_dot, "free -> %d[label = \"%d\"];\n", list->free, list->free);
-    for (num = list->free; num < size - 1; num = list->next[num])
-        fprintf (file_dot, "\t%d -> %d[label = \"%d\"]\n", num, list->next[num], list->next[num]);
-
-    fprintf (file_dot, "\t%d [label = \"%d\"];\n", size, list->count);
-    fprintf (file_dot, "count -> %d\n", size);
-
-    fprintf (file_dot, "}");
-    fclose (file_dot);
-
-    char comand[200] = "";
-    sprintf (comand, "dot -Tpng -Gsize=%zu,16\\! -Gdpi=100 temp_file.dot -o dot_dir/%zu.png", 10+number_calls, number_calls);
+    char comand[256] = "";
+    sprintf (comand, "dot -Tpng -Gsize=%zu,16\\! -Gdpi=100 temp_file.dot -o dot_dir/%zu.png",
+             10 + number_calls, number_calls);
     if (lst::dmp_DOT_SHOW_AT_ONCE)
         sprintf (comand, "%s; fim -a dot_dir/%zu.png", comand, number_calls);
     //printf ("%s", comand);
     system (comand);
 
+    // Склеиваем картинки и удаялем предыдущие
+    if (number_calls > 1 && lst::dmp_stick)
+        Dldot::bonding_pictures (number_calls);
+
     number_calls++;
+}
+
+void lst::create_Animation_dot () {
+    system ("rm dot_dir/video.mp4 2> /dev/null; rm dot_dir/out.gif 2> /dev/null");
+    system ("ffmpeg -r 1 -i dot_dir/%d.png dot_dir/video.mp4 2> /dev/null");
+    system ("ffmpeg -i dot_dir/video.mp4 dot_dir/out.gif 2> /dev/null");
+}
+
+int Verificator_List (list_t *list) {
+    lst::num_t 
+    return 0;
 }
